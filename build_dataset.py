@@ -7,9 +7,9 @@ import torchvision.transforms as transforms
 from tqdm import tqdm
 
 
-image_dir = r"C:\Users\charl\PycharmProjects\Image-Auto-Captioner\datasets\flickr30k\images"
-captions_path = r"C:\Users\charl\PycharmProjects\Image-Auto-Captioner\datasets\flickr30k\captions.csv"
-output_dir = r"C:\Users\charl\PycharmProjects\Image-Auto-Captioner\datasets\augmented flickr30k"
+image_dir = r"C:\Users\charl\PycharmProjects\Image-Auto-Captioner\Image-Auto-Captioning\datasets\flickr30k\images"
+captions_path = r"C:\Users\charl\PycharmProjects\Image-Auto-Captioner\Image-Auto-Captioning\datasets\flickr30k\captions.csv"
+output_dir = r"C:\Users\charl\PycharmProjects\Image-Auto-Captioner\Image-Auto-Captioning\datasets\augmented flickr30k"
 
 
 def load_data():
