@@ -42,7 +42,6 @@ image_transform = transforms.Compose([
 ])
 
 
-
 def load_dataset(split_name):
     dataset_path = dataset_paths[split_name]['metadata']
     return torch.load(dataset_path)
@@ -56,12 +55,16 @@ def extract_features():
         image_dir = dataset_paths[split]['images']
         image_features = []
         caption_features = []
+        filenames = []
+        image_ids = []
 
-        for data in tqdm(dataset, desc=f"Extracting features for {split} set"):
-            # image feature extraction
+        save_interval = 1000  # save extraction every n samples
+
+        for idx, data in enumerate(tqdm(dataset, desc=f"Extracting features for {split} set")):
+            # image data
             image_path = os.path.join(image_dir, os.path.basename(data['image']))
             if not os.path.exists(image_path):
-                print(f"Warning: Image not found at {image_path}. Skipping.")    # image in train not stored properly
+                print(f"Warning: Image not found at {image_path}. Skipping.")  # image in train not stored properly
                 continue
 
             try:
@@ -70,23 +73,43 @@ def extract_features():
                 print(f"Error loading image {image_path}: {e}. Skipping.")
                 continue
 
-            image = image_transform(image).unsqueeze(0)  # add dimension for batch
-            with torch.no_grad():
-                image_feature = resnet(image).squeeze().numpy()
-            image_features.append(image_feature)
-
-            # caption feature extraction
+            # caption data
             caption = data['caption']
             if not isinstance(caption, str):
                 print(f"Warning: Caption is not a string for image {image_path}. Skipping.")
                 continue
 
-            inputs = bert_tokenizer(caption, return_tensors='pt', truncation=True, padding=True)
-            with torch.no_grad():
-                caption_feature = bert_model(**inputs).last_hidden_state.mean(dim=1).squeeze().numpy()
-            caption_features.append(caption_feature)
+            try:
+                # extract image features
+                image = image_transform(image).unsqueeze(0)  # add dimension for batch
+                with torch.no_grad():
+                    image_feature = resnet(image).squeeze().numpy()
 
-        features = {'image_features': image_features, 'caption_features': caption_features}
+                # extract caption features
+                inputs = bert_tokenizer(caption, return_tensors='pt', truncation=True, padding=True)
+                with torch.no_grad():
+                    caption_feature = bert_model(**inputs).last_hidden_state.mean(dim=1).squeeze().numpy()
+            except Exception as e:
+                print(f"Error processing image or caption for {image_path}: {e}. Skipping.")
+                continue
+
+            # append features and metadata only if iamge + cap are successfully processed
+            image_features.append(image_feature)
+            caption_features.append(caption_feature)
+            filenames.append(data['filename'])
+            image_ids.append(data['image_id'])
+
+            # progress save
+            if (idx + 1) % save_interval == 0:
+                partial_save_path = os.path.join(save_dir, f"{split}_extracted_features_partial.pt")
+                features = {'image_features': image_features, 'caption_features': caption_features,
+                            'filenames': filenames, 'image_ids': image_ids}
+                torch.save(features, partial_save_path)
+                # print(f"Progress saved at {partial_save_path} after {idx + 1} samples.")
+
+        # save it all
+        features = {'image_features': image_features, 'caption_features': caption_features, 'filenames': filenames,
+                    'image_ids': image_ids}
         save_path = os.path.join(save_dir, f"{split}_extracted_features.pt")
         torch.save(features, save_path)
 
